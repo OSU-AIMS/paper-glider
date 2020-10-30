@@ -98,7 +98,7 @@ class ThrowingArm(object):
 
     ## Instantiate a `MoveGroupCommander`_ object.  This object is an interface
     ## to a planning group (group of joints). This interface can be used to plan and execute motions:
-    group_name = "bot_mh5"
+    group_name = "mh5_arm"
     move_group = moveit_commander.MoveGroupCommander(group_name)
 
     ## Create a `DisplayTrajectory`_ ROS publisher which is used to display trajectories in Rviz:
