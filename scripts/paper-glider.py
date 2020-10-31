@@ -160,7 +160,7 @@ class ThrowingArm(object):
     return all_close(pose_goal, current_pose, 0.01)
 
 
-  def goto_joint_posn(self,joints):
+  def goto_cart_posn(self,joints):
     ## Go to an Input Position
     ## Get Current Position & Go to input position
     ## Trajectory Type: JOINT MOTION defined by cartesian position
@@ -185,6 +185,22 @@ class ThrowingArm(object):
     # For testing:
     current_pose = self.move_group.get_current_pose().pose
     return all_close(pose_goal, current_pose, 0.01)
+
+  def goto_joint_posn(self,joint_goal):
+    ## Go to Joint Defined position
+    ## Get Current Position & Go to "All-Zeros" Position
+    ## Trajectory Type: JOINT MOTION defined by joint position
+
+    # Send action to move-to defined position
+    self.move_group.go(joint_goal, wait=True)
+
+    # Calling ``stop()`` ensures that there is no residual movement
+    self.move_group.stop()
+
+    # For testing:
+    current_joints = self.move_group.get_current_joint_values()
+    return all_close(joint_goal, current_joints, 0.01)
+
 
   def plan_cartesian_path(self, scale=1):
     # Copy class variables to local variables to make the web tutorials more clear.
@@ -295,19 +311,22 @@ def main():
     print "Press Enter to advance script when prompted."
     print ""
     print "============ Initialize the MH5 Robot & Go-To All-Zeros Position"
-    raw_input()
+    #raw_input()
     robot = ThrowingArm()
     robot.goto_all_zeros()
 
     print "============ Pickup Airplane"
-    #
     raw_input()
     robot.goto_airplane_pickup()
 
-    print "============ Per Best Practices, return to All-Zeros Joint Position [0,0,0,0,0,0]"
-    print "============ Press `Enter` to execute a movement using a 'joint state goal' ..."
+    print "============ Throwing Start Position"
     raw_input()
-    robot.goto_all_zeros()
+    robot.goto_joint_posn([0,-0.58,1.76,0,-0.48,0])
+
+    #print "============ Per Best Practices, return to All-Zeros Joint Position [0,0,0,0,0,0]"
+    #print "============ Press `Enter` to execute a movement using a 'joint state goal' ..."
+    #raw_input()
+    #robot.goto_all_zeros()
 
     print "============ Python based paper-glider thrower demo complete!"
   except rospy.ROSInterruptException:
