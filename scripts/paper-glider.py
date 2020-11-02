@@ -55,6 +55,10 @@ from math import pi
 from std_msgs.msg import String
 from moveit_commander.conversions import pose_to_list
 
+# Quaternion Tools
+#from geometry_msgs.msg import Quaternion
+from tf.transformations import euler_from_quaternion, quaternion_from_euler
+
 
 ## BEGIN MAIN CODE FUNCTIONS
 ##
@@ -79,8 +83,6 @@ def all_close(goal, actual, tolerance):
     return all_close(pose_to_list(goal), pose_to_list(actual), tolerance)
 
   return True
-
-
 
 
 class ThrowingArm(object):
@@ -138,11 +140,25 @@ class ThrowingArm(object):
     ## Get Current Position & Go to "All-Zeros" Position
     ## Trajectory Type: JOINT MOTION defined by cartesian position
 
+    # Using Quaternion's for Angle
+    # Conversion from Euler(rotx,roty,rotz) to Quaternion(x,y,z,w)
+    # Euler Units: Radians
+    # http://docs.ros.org/en/melodic/api/tf/html/python/transformations.html
+    # http://wiki.ros.org/tf2/Tutorials/Quaternions
+    pose_q = quaternion_from_euler(90,0,0,axes='sxyz')
+    print(pose_q)
+
     pose_goal = geometry_msgs.msg.Pose()
-    pose_goal.orientation.w = 0
-    pose_goal.position.x = 0
-    pose_goal.position.y = -0.6
-    pose_goal.position.z = 0.3
+    #pose_goal.position.x = 0
+    #pose_goal.position.y = -0.6
+    #pose_goal.position.z = 0.3
+    pose_goal.position.x = 0.5
+    pose_goal.position.y = 0
+    pose_goal.position.z = 0.680
+    pose_goal.orientation.w = pose_q[0]
+    pose_goal.orientation.x = pose_q[1]
+    pose_goal.orientation.y = pose_q[2]
+    pose_goal.orientation.z = pose_q[3]
 
     self.move_group.set_pose_target(pose_goal)
 
@@ -160,16 +176,18 @@ class ThrowingArm(object):
     return all_close(pose_goal, current_pose, 0.01)
 
 
-  def goto_cart_posn(self,joints):
+  def goto_cart_posn(self,pose):
     ## Go to an Input Position
     ## Get Current Position & Go to input position
     ## Trajectory Type: JOINT MOTION defined by cartesian position
 
     pose_goal = geometry_msgs.msg.Pose()
-    pose_goal.orientation.w = joints[0]
-    pose_goal.position.x = joints[1]
-    pose_goal.position.y = joints[2]
-    pose_goal.position.z = joints[3]
+    pose_goal.position.x = pose[0]
+    pose_goal.position.y = pose[1]
+    pose_goal.position.z = pose[2]
+    pose_goal.orientation.x = pose[3]
+    pose_goal.orientation.y = pose[4]
+    pose_goal.orientation.z = pose[5]
 
     self.move_group.set_pose_target(pose_goal)
 
@@ -203,11 +221,6 @@ class ThrowingArm(object):
 
 
   def plan_cartesian_path(self, scale=1):
-    # Copy class variables to local variables to make the web tutorials more clear.
-    # In practice, you should use the class variables directly unless you have a good
-    # reason not to.
-    move_group = self.move_group
-
     ## BEGIN_SUB_TUTORIAL plan_cartesian_path
     ##
     ## Cartesian Paths
@@ -218,7 +231,7 @@ class ThrowingArm(object):
     ##
     waypoints = []
 
-    wpose = move_group.get_current_pose().pose
+    wpose = self.move_group.get_current_pose().pose
     wpose.position.z += scale * 0.1  # First move up (z)
     waypoints.append(copy.deepcopy(wpose))
 
@@ -256,7 +269,7 @@ class ThrowingArm(object):
     # translation.  We will disable the jump threshold by setting it to 0.0,
     # ignoring the check for infeasible jumps in joint space, which is sufficient
     # for this tutorial.
-    (plan, fraction) = move_group.compute_cartesian_path(
+    (plan, fraction) = self.move_group.compute_cartesian_path(
                                        waypoints,   # waypoints to follow
                                        0.01,        # eef_step
                                        0.0)         # jump_threshold
@@ -315,13 +328,19 @@ def main():
     robot = ThrowingArm()
     robot.goto_all_zeros()
 
+
     print "============ Pickup Airplane"
-    raw_input()
+    #raw_input()
     robot.goto_airplane_pickup()
+    #move_s = robot.move_group.get_current_joint_values()
+    #move_s[4] = 0
+    #print(move_s)
+    #robot.goto_joint_posn(move_s)
+
 
     print "============ Throwing Start Position"
-    raw_input()
-    robot.goto_joint_posn([0,-0.58,1.76,0,-0.48,0])
+    #raw_input()
+    #robot.goto_joint_posn([0,-0.58,1.76,0,-0.48,0])
 
     #print "============ Per Best Practices, return to All-Zeros Joint Position [0,0,0,0,0,0]"
     #print "============ Press `Enter` to execute a movement using a 'joint state goal' ..."
