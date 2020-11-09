@@ -134,31 +134,78 @@ class ThrowingArm(object):
     current_joints = self.move_group.get_current_joint_values()
     return all_close(joint_goal, current_joints, 0.01)
 
-
   def goto_airplane_pickup(self):
-    ## Go to "ALL-Zeros" position
-    ## Get Current Position & Go to "All-Zeros" Position
-    ## Trajectory Type: JOINT MOTION defined by cartesian position
+    ## Go to "Airplane Pickup" position
+    ## Trajectory Type: JOINT MOTION defined by joint position
+
+    # Get Current Position
+    joint_goal = self.move_group.get_current_joint_values()
+
+    # Define "Airplane Pickup" Position
+    joint_goal[0] = -1.41
+    joint_goal[1] = 1.08
+    joint_goal[2] = 0.21
+    joint_goal[3] = 0
+    joint_goal[4] = -0.70
+    joint_goal[5] = 0
+
+    # Send action to move-to defined position
+    self.move_group.go(joint_goal, wait=True)
+
+    # Calling ``stop()`` ensures that there is no residual movement
+    self.move_group.stop()
+
+    # For testing:
+    current_joints = self.move_group.get_current_joint_values()
+    return all_close(joint_goal, current_joints, 0.01)
+
+  def goto_throw_start(self):
+    ## Go to "Throw Start" position
+    ## Trajectory Type: JOINT MOTION defined by joint position
+
+    # Get Current Position
+    joint_goal = self.move_group.get_current_joint_values()
+
+    # Define "Airplane Pickup" Position
+    joint_goal[0] = 0
+    joint_goal[1] = -0.92
+    joint_goal[2] = 1.40
+    joint_goal[3] = 0
+    joint_goal[4] = -0.6
+    joint_goal[5] = 0
+
+    # Command Motion, Wait, Stop
+    self.move_group.go(joint_goal, wait=True)
+    self.move_group.stop()
+
+    # For testing:
+    current_joints = self.move_group.get_current_joint_values()
+    return all_close(joint_goal, current_joints, 0.01)
+
+  def goto_Quant_Orient(self):
+
+    # Get Current Orientation in Quanternion Format
+    # http://docs.ros.org/en/api/geometry_msgs/html/msg/Pose.html
+    #q_poseCurrent = self.move_group.get_current_pose().pose.orientation
+    #print(q_poseCurrent)
 
     # Using Quaternion's for Angle
     # Conversion from Euler(rotx,roty,rotz) to Quaternion(x,y,z,w)
-    # Euler Units: Radians
+    # Euler Units: Degrees
     # http://docs.ros.org/en/melodic/api/tf/html/python/transformations.html
     # http://wiki.ros.org/tf2/Tutorials/Quaternions
-    pose_q = quaternion_from_euler(90,0,0,axes='sxyz')
-    print(pose_q)
+    # http://docs.ros.org/en/api/geometry_msgs/html/msg/Quaternion.html
+    q_orientGoal = quaternion_from_euler(0,0,0,axes='sxyz')
+    print(q_orientGoal)
 
     pose_goal = geometry_msgs.msg.Pose()
-    #pose_goal.position.x = 0
-    #pose_goal.position.y = -0.6
-    #pose_goal.position.z = 0.3
-    pose_goal.position.x = 0.5
+    pose_goal.position.x = -0.5
     pose_goal.position.y = 0
-    pose_goal.position.z = 0.680
-    pose_goal.orientation.w = pose_q[0]
-    pose_goal.orientation.x = pose_q[1]
-    pose_goal.orientation.y = pose_q[2]
-    pose_goal.orientation.z = pose_q[3]
+    pose_goal.position.z = 1.0
+    pose_goal.orientation.x = q_orientGoal[0]
+    pose_goal.orientation.y = q_orientGoal[1]
+    pose_goal.orientation.z = q_orientGoal[2]
+    pose_goal.orientation.w = q_orientGoal[3]
 
     self.move_group.set_pose_target(pose_goal)
 
@@ -167,6 +214,7 @@ class ThrowingArm(object):
 
     # Calling `stop()` ensures that there is no residual movement
     self.move_group.stop()
+
     # It is always good to clear your targets after planning with poses.
     # Note: there is no equivalent function for clear_joint_value_targets()
     self.move_group.clear_pose_targets()
@@ -340,7 +388,7 @@ def main():
 
     print "============ Throwing Start Position"
     #raw_input()
-    #robot.goto_joint_posn([0,-0.58,1.76,0,-0.48,0])
+    robot.goto_throw_start()
 
     #print "============ Per Best Practices, return to All-Zeros Joint Position [0,0,0,0,0,0]"
     #print "============ Press `Enter` to execute a movement using a 'joint state goal' ..."
