@@ -95,7 +95,7 @@ class ThrowingArm(object):
     rospy.init_node('node_ThrowingArm', anonymous=True)
 
     # Setup Variables needed for Moveit_Commander
-    self.box_name = ''
+    self.glider_name = ''
     self.robot = moveit_commander.RobotCommander()
     self.scene = moveit_commander.PlanningSceneInterface()
     self.group_name = "bot_mh5"
@@ -363,7 +363,7 @@ class ThrowingArm(object):
 
 
 
-  def wait_for_state_update(self, box_is_known=False, box_is_attached=False, timeout=4):
+  def wait_for_state_update(self, glider_is_known=False, glider_is_attached=False, timeout=4):
     ## wait_for_scene_update
     ## Serves to ensure that the paper-airplane simulated object has been attached to simulated robot model
     ## This helps with collision planning. Not as important for paper-glider project, but is best practice.
@@ -371,16 +371,16 @@ class ThrowingArm(object):
     start = rospy.get_time()
     seconds = rospy.get_time()
     while (seconds - start < timeout) and not rospy.is_shutdown():
-      # Test if the box is in attached objects
-      attached_objects = self.scene.get_attached_objects([self.box_name])
+      # Test if the glider is in attached objects
+      attached_objects = self.scene.get_attached_objects([self.glider_name])
       is_attached = len(attached_objects.keys()) > 0
 
-      # Test if the box is in the scene.
-      # Note that attaching the box will remove it from known_objects
-      is_known = self.box_name in self.scene.get_known_object_names()
+      # Test if the glider is in the scene.
+      # Note that attaching the glider will remove it from known_objects
+      is_known = self.glider_name in self.scene.get_known_object_names()
 
       # Test if we are in the expected state
-      if (box_is_attached == is_attached) and (box_is_known == is_known):
+      if (glider_is_attached == is_attached) and (glider_is_known == is_known):
         return True
 
       # Sleep so that we give other threads time on the processor
@@ -389,6 +389,52 @@ class ThrowingArm(object):
 
     # If we exited the while loop without returning then we timed out
     return False
+
+
+  def add_glider(self, timeout=4):
+    ## Add Glider Element to Collision Scene
+
+    # Create glider
+    glider_pose = geometry_msgs.msg.PoseStamped()
+    glider_pose.header.frame_id = "link_t"
+    glider_pose.pose.orientation.w = 1.0
+    glider_pose.pose.position.x = 0.07 # slightly above the end effector
+    self.glider_name = "glider"
+
+    # Add Glider to scene
+    self.scene.add_box(self.glider_name, glider_pose, size=(0.05, 0.3, 0.1))
+    #self.scene.add_mesh(self.glider_name, glider_pose, filename="$(find paper-glider)/meshes/glider-model.stl", size=(1,1,1))
+
+    return self.wait_for_state_update(glider_is_known=True, timeout=timeout)
+
+  def attach_glider(self, timeout=4):
+    ## Attaching Glider to the Robot
+    grasping_group = 'bot_mh5'
+    touch_links = self.robot.get_link_names(group=grasping_group)
+
+    # Attach Glider to Robot EEF
+    self.scene.attach_box(self.eef_link, self.glider_name, touch_links=touch_links)
+    #self.scene.attach_mesh(self.eef_link, self.glider_name, touch_links=touch_links)
+
+    # We wait for the planning scene to update.
+    return self.wait_for_state_update(glider_is_attached=True, glider_is_known=False, timeout=timeout)
+
+
+  def detach_glider(self, timeout=4):
+    ## Detaching Glider from the Robot
+    self.scene.remove_attached_object(self.eef_link, name=self.glider_name)
+
+    # Wait for the planning scene to update.
+    return self.wait_for_state_update(glider_is_known=True, glider_is_attached=False, timeout=timeout)
+
+
+  def remove_glider(self, timeout=4):
+    ## Removing Objects from the Planning Scene
+    ## **Note:** The object must be detached before we can remove it from the world
+    self.scene.remove_world_object(self.glider_name)
+
+    # Wait for the planning scene to update.
+    return self.wait_for_state_update(glider_is_attached=False, glider_is_known=False, timeout=timeout)
 
 
 
@@ -409,16 +455,23 @@ def main():
 
 
     print "============ Pickup Airplane"
-    raw_input('Press Enter to Move')
+    raw_input('Move to PreDefined Airplane Pickup <enter>')
     robot.goto_airplane_pickup()
 
-    raw_input('Press Enter to Actuate Gripper')
-    robot.act_gripper(1)
+    raw_input('Actuate Gripper <enter>')
+    #robot.act_gripper(1)
+
+    robot.add_glider()
+    robot.attach_glider()
 
 
     print "============ Throwing Start Position"
-    #raw_input()
+    raw_input('Move to Throw Position <enter>')
     robot.goto_throw_start()
+
+    raw_input('Release Glider <enter>')
+    robot.detach_glider()
+    robot.remove_glider()
 
     #print "============ Per Best Practices, return to All-Zeros Joint Position [0,0,0,0,0,0]"
     #print "============ Press `Enter` to execute a movement using a 'joint state goal' ..."
