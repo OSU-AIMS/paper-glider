@@ -172,7 +172,7 @@ class ThrowingArm(object):
     joint_goal[2] = 1.40
     joint_goal[3] = 0
     joint_goal[4] = -0.6
-    joint_goal[5] = 0
+    joint_goal[5] = 1.5708
 
     # Command Motion, Wait, Stop
     self.move_group.go(joint_goal, wait=True)
@@ -268,49 +268,18 @@ class ThrowingArm(object):
     return all_close(joint_goal, current_joints, 0.01)
 
 
-  def plan_cartesian_path(self, scale=1):
-    ## BEGIN_SUB_TUTORIAL plan_cartesian_path
-    ##
-    ## Cartesian Paths
-    ## ^^^^^^^^^^^^^^^
-    ## You can plan a Cartesian path directly by specifying a list of waypoints
-    ## for the end-effector to go through. If executing  interactively in a
-    ## Python shell, set scale = 1.0.
-    ##
+  def plan_cartesian_throw_path(self, scale=1):
+    ## Plan Cartesian Path to throw glider
+
+    # Specify a list of waypoints
     waypoints = []
 
     wpose = self.move_group.get_current_pose().pose
-    wpose.position.z += scale * 0.1  # First move up (z)
+    wpose.position.z += scale * 0.1  # Move up (z)
+    wpose.position.x += scale * 0.8  # Forward (x)
     waypoints.append(copy.deepcopy(wpose))
 
-    wpose.position.z += scale * 0.2  # First move up (z)
-    wpose.position.y += scale * 0.2  # and sideways (y)
-    waypoints.append(copy.deepcopy(wpose))
 
-    wpose.position.y -= scale * 0.4  # and sideways (y)
-    waypoints.append(copy.deepcopy(wpose))
-
-    wpose.position.z += scale * 0.2  # First move up (z)
-    wpose.position.y += scale * 0.4  # and sideways (y)
-    waypoints.append(copy.deepcopy(wpose))
-
-    wpose.position.y -= scale * 0.5  # and sideways (y)
-    waypoints.append(copy.deepcopy(wpose))
-
-    wpose.position.x -= scale * 0.2
-    waypoints.append(copy.deepcopy(wpose))
-
-    wpose.position.y -= scale * 0.2
-    waypoints.append(copy.deepcopy(wpose))
-
-    wpose.position.z -= scale * 0.2
-    waypoints.append(copy.deepcopy(wpose))
-
-    wpose.position.x += scale * 0.2
-    waypoints.append(copy.deepcopy(wpose))
-
-    wpose.position.y += scale * 0.2
-    waypoints.append(copy.deepcopy(wpose))
 
     # We want the Cartesian path to be interpolated at a resolution of 1 cm
     # which is why we will specify 0.01 as the eef_step in Cartesian
@@ -319,7 +288,7 @@ class ThrowingArm(object):
     # for this tutorial.
     (plan, fraction) = self.move_group.compute_cartesian_path(
                                        waypoints,   # waypoints to follow
-                                       0.01,        # eef_step
+                                       0.05,        # eef_step
                                        0.0)         # jump_threshold
 
     # Note: We are just planning, not asking move_group to actually move the robot yet:
@@ -390,7 +359,6 @@ class ThrowingArm(object):
     # If we exited the while loop without returning then we timed out
     return False
 
-
   def add_glider(self, timeout=4):
     ## Add Glider Element to Collision Scene
 
@@ -418,7 +386,6 @@ class ThrowingArm(object):
 
     # We wait for the planning scene to update.
     return self.wait_for_state_update(glider_is_attached=True, glider_is_known=False, timeout=timeout)
-
 
   def detach_glider(self, timeout=4):
     ## Detaching Glider from the Robot
@@ -469,6 +436,13 @@ def main():
     raw_input('Move to Throw Position <enter>')
     robot.goto_throw_start()
 
+
+
+    print "============ Throw Glider"
+    raw_input('Throw Glider <enter>')
+    throwPlan, throwFraction = robot.plan_cartesian_throw_path()
+    robot.execute_plan(throwPlan)
+
     raw_input('Release Glider <enter>')
     robot.detach_glider()
     robot.remove_glider()
@@ -478,7 +452,7 @@ def main():
     #raw_input()
     #robot.goto_all_zeros()
 
-    print "============ Python based paper-glider thrower demo complete!"
+    print "============ Demo complete!"
   except rospy.ROSInterruptException:
     return
   except KeyboardInterrupt:
