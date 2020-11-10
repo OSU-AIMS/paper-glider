@@ -43,4 +43,9 @@ sudo apt-get update ros-kinetic-[package-name]
 ```
 If a package is not found it is probably a third-party dependency, google the name of the package and search for installation instructions:
 
-## Recommendations
+## Usage
+
+```
+roslaunch motoman_mh5_moveit_config demo.roslaunch
+rosrun paper-glider paper-glider.py
+```
