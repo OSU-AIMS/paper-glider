@@ -331,6 +331,37 @@ class ThrowingArm(object):
     ## Use execute if you would like the robot to follow a plan that has already been computed:
     self.move_group.execute(plan, wait=True)
 
+  def act_gripper(self, request):
+    ## Wrapper for rosservice to open/close gripper using Read/Write IO
+
+    if request != (1 or 0): return 0
+
+    # Wait for ros services to come up
+    rospy.wait_for_service('read_single_io')
+    rospy.wait_for_service('write_single_io')
+
+    # Create Handle for Service Proxy's
+    handle_read_single_io = rospy.ServiceProxy('read_single_io', readSingleIO)
+    handle_write_single_io = rospy.ServiceProxy('write_single_io', writeSingleIO)
+
+    # Send 'Write' IO Message
+    try:
+      write_status = handle_write_single_io(10011, request)
+    except:
+      print("An exception occured. Unable to write to Single IO.")
+
+
+    # Call Read Service to check current position
+    read_status = handle_read_single_io(10011)
+    print read_status
+    if read_status:
+        print('Gripper is Closed')
+    else:
+        print('Gripper is Open')
+
+    return read_status
+
+
 
   def wait_for_state_update(self, box_is_known=False, box_is_attached=False, timeout=4):
     ## wait_for_scene_update
@@ -378,12 +409,11 @@ def main():
 
 
     print "============ Pickup Airplane"
-    #raw_input()
+    raw_input('Press Enter to Move')
     robot.goto_airplane_pickup()
-    #move_s = robot.move_group.get_current_joint_values()
-    #move_s[4] = 0
-    #print(move_s)
-    #robot.goto_joint_posn(move_s)
+
+    raw_input('Press Enter to Actuate Gripper')
+    robot.act_gripper(1)
 
 
     print "============ Throwing Start Position"
