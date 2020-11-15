@@ -51,7 +51,7 @@ import rospy
 import moveit_commander
 import moveit_msgs.msg
 import geometry_msgs.msg
-from math import pi
+from math import pi, radians
 from std_msgs.msg import String
 from moveit_commander.conversions import pose_to_list
 from motoman_msgs.srv import ReadSingleIO, WriteSingleIO
@@ -191,6 +191,7 @@ class ThrowingArm(object):
     return all_close(joint_goal, current_joints, 0.01)
 
   def goto_Quant_Orient(self,pose):
+    ## GOTO Pose Using Cartesian + Quaternion Pose
 
     # Get Current Orientation in Quanternion Format
     # http://docs.ros.org/en/api/geometry_msgs/html/msg/Pose.html
@@ -224,35 +225,6 @@ class ThrowingArm(object):
     # Calling `stop()` ensures that there is no residual movement
     self.move_group.stop()
 
-    # It is always good to clear your targets after planning with poses.
-    # Note: there is no equivalent function for clear_joint_value_targets()
-    self.move_group.clear_pose_targets()
-
-    # For testing:
-    current_pose = self.move_group.get_current_pose().pose
-    return all_close(pose_goal, current_pose, 0.01)
-
-
-  def goto_cart_posn(self,pose):
-    ## Go to an Input Position
-    ## Get Current Position & Go to input position
-    ## Trajectory Type: JOINT MOTION defined by cartesian position
-
-    pose_goal = geometry_msgs.msg.Pose()
-    pose_goal.position.x = pose[0]
-    pose_goal.position.y = pose[1]
-    pose_goal.position.z = pose[2]
-    pose_goal.orientation.x = pose[3]
-    pose_goal.orientation.y = pose[4]
-    pose_goal.orientation.z = pose[5]
-
-    self.move_group.set_pose_target(pose_goal)
-
-    ## Call the planner to compute the plan and execute it.
-    plan = self.move_group.go(wait=True)
-
-    # Calling `stop()` ensures that there is no residual movement
-    self.move_group.stop()
     # It is always good to clear your targets after planning with poses.
     # Note: there is no equivalent function for clear_joint_value_targets()
     self.move_group.clear_pose_targets()
@@ -383,7 +355,6 @@ class ThrowingArm(object):
     #self.scene.add_mesh(self.glider_name, glider_pose, filename="$(find paper-glider)/meshes/glider-model.stl", size=(1,1,1))
 
     return self.wait_for_state_update(glider_is_known=True, timeout=timeout)
-
   def attach_glider(self, timeout=4):
     ## Attaching Glider to the Robot
     grasping_group = 'bot_mh5'
@@ -395,15 +366,12 @@ class ThrowingArm(object):
 
     # We wait for the planning scene to update.
     return self.wait_for_state_update(glider_is_attached=True, glider_is_known=False, timeout=timeout)
-
   def detach_glider(self, timeout=4):
     ## Detaching Glider from the Robot
     self.scene.remove_attached_object(self.eef_link, name=self.glider_name)
 
     # Wait for the planning scene to update.
     return self.wait_for_state_update(glider_is_known=True, glider_is_attached=False, timeout=timeout)
-
-
   def remove_glider(self, timeout=4):
     ## Removing Objects from the Planning Scene
     ## **Note:** The object must be detached before we can remove it from the world
@@ -433,35 +401,37 @@ def main():
     robot.goto_all_zeros()
 
 
+
     print "============ Pickup Airplane"
     raw_input('Move to PreDefined Airplane Pickup <enter>')
     #robot.goto_airplane_pickup()
-    pickup_pose = [0,-0.65,0.2,0,1.5707,0]
-    robot.goto_Quant_Orient(pickup_pose)
-
-    return
+    pose_pickupGlider = [0.2,-0.65,0.2,0,radians(90),radians(90)]
+    robot.goto_Quant_Orient(pose_pickupGlider)
 
     raw_input('Actuate Gripper <enter>')
     robot.act_gripper(1)
-
     robot.add_glider()
     robot.attach_glider()
 
 
+
     print "============ Throwing Start Position"
     raw_input('Move to Throw Position <enter>')
-    robot.goto_throw_start()
-
+    #robot.goto_throw_start()
+    pose_throwStart = [0,-0.95,1.40,0,-0.6,radians(90)]
+    robot.goto_joint_posn(pose_throwStart)
 
 
     print "============ Throw Glider"
     raw_input('Throw Glider <enter>')
     robot.set_accel(0.95)
     robot.set_vel(0.95)
-    throwPlan, throwFraction = robot.plan_cartesian_throw_path()
-    robot.execute_plan(throwPlan)
+    #throwPlan, throwFraction = robot.plan_cartesian_throw_path()
+    #robot.execute_plan(throwPlan)
+    pose_throwEnd = [0,0.33,1.70,0,0.5,radians(90)]
+    robot.goto_joint_posn(pose_throwEnd)
 
-    raw_input('Release Glider <enter>')
+    #raw_input('Release Glider <enter>')
     robot.act_gripper(0)
     robot.detach_glider()
     robot.remove_glider()
