@@ -54,6 +54,7 @@ import geometry_msgs.msg
 from math import pi
 from std_msgs.msg import String
 from moveit_commander.conversions import pose_to_list
+from motoman_msgs.srv import ReadSingleIO, WriteSingleIO
 
 # Quaternion Tools
 #from geometry_msgs.msg import Quaternion
@@ -312,26 +313,26 @@ class ThrowingArm(object):
   def act_gripper(self, request):
     ## Wrapper for rosservice to open/close gripper using Read/Write IO
 
-    if request != (1 or 0): return 0
-
     # Wait for ros services to come up
     rospy.wait_for_service('read_single_io')
     rospy.wait_for_service('write_single_io')
 
     # Create Handle for Service Proxy's
-    handle_read_single_io = rospy.ServiceProxy('read_single_io', readSingleIO)
-    handle_write_single_io = rospy.ServiceProxy('write_single_io', writeSingleIO)
+    try:
+        read_single_io = rospy.ServiceProxy('read_single_io', ReadSingleIO)
+        write_single_io = rospy.ServiceProxy('write_single_io', WriteSingleIO)
+    except rospy.ServiceException as e:
+        print("Gripper IO Service Call failed: %s"%e)
 
     # Send 'Write' IO Message
     try:
-      write_status = handle_write_single_io(10011, request)
+      write_status = write_single_io(10010, request)
     except:
       print("An exception occured. Unable to write to Single IO.")
 
 
     # Call Read Service to check current position
-    read_status = handle_read_single_io(10011)
-    print read_status
+    read_status = read_single_io(10011).value
     if read_status:
         print('Gripper is Closed')
     else:
@@ -438,7 +439,7 @@ def main():
     robot.goto_airplane_pickup()
 
     raw_input('Actuate Gripper <enter>')
-    #robot.act_gripper(1)
+    robot.act_gripper(1)
 
     robot.add_glider()
     robot.attach_glider()
@@ -452,10 +453,13 @@ def main():
 
     print "============ Throw Glider"
     raw_input('Throw Glider <enter>')
+    robot.set_accel(0.95)
+    robot.set_vel(0.95)
     throwPlan, throwFraction = robot.plan_cartesian_throw_path()
     robot.execute_plan(throwPlan)
 
     raw_input('Release Glider <enter>')
+    robot.act_gripper(0)
     robot.detach_glider()
     robot.remove_glider()
 
