@@ -107,6 +107,15 @@ class ThrowingArm(object):
     self.eef_link = self.move_group.get_end_effector_link()
     self.group_names = self.robot.get_group_names()
 
+  def set_vel(self,max_vel):
+    ## Wrapper for Moveit Commander's max_velocity
+    ## Allowed range...   0.0 <= max_vel <= 1.0
+    self.move_group.set_max_velocity_scaling_factor(max_vel)
+
+  def set_accel(self,max_accel):
+    ## Wrapper for Moveit Commander's max_acceleration
+    ## Allowed range...   0.0 <= max_vel <= 1.0
+    self.move_group.set_max_acceleration_scaling_factor(max_accel)
 
   def goto_all_zeros(self):
     ## Go to "ALL-Zeros" position
@@ -416,8 +425,11 @@ def main():
     print "Press Enter to advance script when prompted."
     print ""
     print "============ Initialize the MH5 Robot & Go-To All-Zeros Position"
-    #raw_input()
     robot = ThrowingArm()
+    robot.set_accel(0.2)
+    robot.set_vel(0.2)
+
+    raw_input('Go to All-Zeros Position <enter>')
     robot.goto_all_zeros()
 
 
