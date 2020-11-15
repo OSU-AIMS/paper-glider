@@ -141,7 +141,6 @@ class ThrowingArm(object):
     # For testing:
     current_joints = self.move_group.get_current_joint_values()
     return all_close(joint_goal, current_joints, 0.01)
-
   def goto_airplane_pickup(self):
     ## Go to "Airplane Pickup" position
     ## Trajectory Type: JOINT MOTION defined by joint position
@@ -166,89 +165,6 @@ class ThrowingArm(object):
     # For testing:
     current_joints = self.move_group.get_current_joint_values()
     return all_close(joint_goal, current_joints, 0.01)
-
-  def goto_throw_start(self):
-    ## Go to "Throw Start" position
-    ## Trajectory Type: JOINT MOTION defined by joint position
-
-    # Get Current Position
-    joint_goal = self.move_group.get_current_joint_values()
-
-    # Define "Airplane Pickup" Position
-    joint_goal[0] = 0
-    joint_goal[1] = -0.92
-    joint_goal[2] = 1.40
-    joint_goal[3] = 0
-    joint_goal[4] = -0.6
-    joint_goal[5] = 1.5708
-
-    # Command Motion, Wait, Stop
-    self.move_group.go(joint_goal, wait=True)
-    self.move_group.stop()
-
-    # For testing:
-    current_joints = self.move_group.get_current_joint_values()
-    return all_close(joint_goal, current_joints, 0.01)
-
-  def goto_Quant_Orient(self,pose):
-    ## GOTO Pose Using Cartesian + Quaternion Pose
-
-    # Get Current Orientation in Quanternion Format
-    # http://docs.ros.org/en/api/geometry_msgs/html/msg/Pose.html
-    #q_poseCurrent = self.move_group.get_current_pose().pose.orientation
-    #print(q_poseCurrent)
-
-    # Using Quaternion's for Angle
-    # Conversion from Euler(rotx,roty,rotz) to Quaternion(x,y,z,w)
-    # Euler Units: RADIANS
-    # http://docs.ros.org/en/melodic/api/tf/html/python/transformations.html
-    # http://wiki.ros.org/tf2/Tutorials/Quaternions
-    # http://docs.ros.org/en/api/geometry_msgs/html/msg/Quaternion.html
-
-    q_orientGoal = quaternion_from_euler(pose[3],pose[4],pose[5],axes='sxyz')
-    print(q_orientGoal)
-
-    pose_goal = geometry_msgs.msg.Pose()
-    pose_goal.position.x = pose[0]
-    pose_goal.position.y = pose[1]
-    pose_goal.position.z = pose[2]
-    pose_goal.orientation.x = q_orientGoal[0]
-    pose_goal.orientation.y = q_orientGoal[1]
-    pose_goal.orientation.z = q_orientGoal[2]
-    pose_goal.orientation.w = q_orientGoal[3]
-
-    self.move_group.set_pose_target(pose_goal)
-
-    ## Call the planner to compute the plan and execute it.
-    plan = self.move_group.go(wait=True)
-
-    # Calling `stop()` ensures that there is no residual movement
-    self.move_group.stop()
-
-    # It is always good to clear your targets after planning with poses.
-    # Note: there is no equivalent function for clear_joint_value_targets()
-    self.move_group.clear_pose_targets()
-
-    # For testing:
-    current_pose = self.move_group.get_current_pose().pose
-    return all_close(pose_goal, current_pose, 0.01)
-
-  def goto_joint_posn(self,joint_goal):
-    ## Go to Joint Defined position
-    ## Get Current Position & Go to "All-Zeros" Position
-    ## Trajectory Type: JOINT MOTION defined by joint position
-
-    # Send action to move-to defined position
-    self.move_group.go(joint_goal, wait=True)
-
-    # Calling ``stop()`` ensures that there is no residual movement
-    self.move_group.stop()
-
-    # For testing:
-    current_joints = self.move_group.get_current_joint_values()
-    return all_close(joint_goal, current_joints, 0.01)
-
-
   def plan_cartesian_throw_path(self, scale=1):
     ## Plan Cartesian Path to throw glider
 
@@ -275,11 +191,62 @@ class ThrowingArm(object):
     # Note: We are just planning, not asking move_group to actually move the robot yet:
     return plan, fraction
 
+  def goto_Quant_Orient(self,pose):
+    ## GOTO Pose Using Cartesian + Quaternion Pose
 
-  def execute_plan(self, plan):
-    ## Execute a Plan
-    ## Use execute if you would like the robot to follow a plan that has already been computed:
-    self.move_group.execute(plan, wait=True)
+    # Get Current Orientation in Quanternion Format
+    # http://docs.ros.org/en/api/geometry_msgs/html/msg/Pose.html
+    #q_poseCurrent = self.move_group.get_current_pose().pose.orientation
+    #print(q_poseCurrent)
+
+    # Using Quaternion's for Angle
+    # Conversion from Euler(rotx,roty,rotz) to Quaternion(x,y,z,w)
+    # Euler Units: RADIANS
+    # http://docs.ros.org/en/melodic/api/tf/html/python/transformations.html
+    # http://wiki.ros.org/tf2/Tutorials/Quaternions
+    # http://docs.ros.org/en/api/geometry_msgs/html/msg/Quaternion.html
+
+    # Convert Euler Orientation Request to Quanternion
+    q_orientGoal = quaternion_from_euler(pose[3],pose[4],pose[5],axes='sxyz')
+
+    pose_goal = geometry_msgs.msg.Pose()
+    pose_goal.position.x = pose[0]
+    pose_goal.position.y = pose[1]
+    pose_goal.position.z = pose[2]
+    pose_goal.orientation.x = q_orientGoal[0]
+    pose_goal.orientation.y = q_orientGoal[1]
+    pose_goal.orientation.z = q_orientGoal[2]
+    pose_goal.orientation.w = q_orientGoal[3]
+
+    self.move_group.set_pose_target(pose_goal)
+
+    ## Call the planner to compute the plan and execute it.
+    plan = self.move_group.go(wait=True)
+
+    # Calling `stop()` ensures that there is no residual movement
+    self.move_group.stop()
+
+    # It is always good to clear your targets after planning with poses.
+    # Note: there is no equivalent function for clear_joint_value_targets()
+    self.move_group.clear_pose_targets()
+
+    # For testing:
+    current_pose = self.move_group.get_current_pose().pose
+    return all_close(pose_goal, current_pose, 0.01)
+  def goto_joint_posn(self,joint_goal):
+    ## Go to Joint Defined position
+    ## Get Current Position & Go to "All-Zeros" Position
+    ## Trajectory Type: JOINT MOTION defined by joint position
+
+    # Send action to move-to defined position
+    self.move_group.go(joint_goal, wait=True)
+
+    # Calling ``stop()`` ensures that there is no residual movement
+    self.move_group.stop()
+
+    # For testing:
+    current_joints = self.move_group.get_current_joint_values()
+    return all_close(joint_goal, current_joints, 0.01)
 
   def act_gripper(self, request):
     ## Wrapper for rosservice to open/close gripper using Read/Write IO
@@ -311,8 +278,10 @@ class ThrowingArm(object):
 
     return read_status
 
-
-
+  def execute_plan(self, plan):
+    ## Execute a Plan
+    ## Use execute if you would like the robot to follow a plan that has already been computed:
+    self.move_group.execute(plan, wait=True)
   def wait_for_state_update(self, glider_is_known=False, glider_is_attached=False, timeout=4):
     ## wait_for_scene_update
     ## Serves to ensure that the paper-airplane simulated object has been attached to simulated robot model
@@ -404,31 +373,40 @@ def main():
 
     print "============ Pickup Airplane"
     raw_input('Move to PreDefined Airplane Pickup <enter>')
-    #robot.goto_airplane_pickup()
-    pose_pickupGlider = [0.2,-0.65,0.2,0,radians(90),radians(90)]
+
+    #Pickup w/ Standoff
+    pose_pickupGlider = [0.1,-0.50,0.3,0,radians(90),radians(90)]
     robot.goto_Quant_Orient(pose_pickupGlider)
 
-    raw_input('Actuate Gripper <enter>')
+    #Descend onto Glider
+    pose_pickupGlider = [0.1,-0.50,0.18,0,radians(90),radians(90)]
+    robot.goto_Quant_Orient(pose_pickupGlider)
+
+    #Use Gripper to Pikcup Glider
+    raw_input('Actuate Gripper and Throw! <enter>')
     robot.act_gripper(1)
     robot.add_glider()
     robot.attach_glider()
 
+    #Liftup off table
+    pose_pickupGlider = [0.1,-0.50,0.3,0,radians(90),radians(90)]
+    robot.goto_Quant_Orient(pose_pickupGlider)
+
 
 
     print "============ Throwing Start Position"
-    raw_input('Move to Throw Position <enter>')
-    #robot.goto_throw_start()
+    #raw_input('Move to Throw Position <enter>')
     pose_throwStart = [0,-0.95,1.40,0,-0.6,radians(90)]
     robot.goto_joint_posn(pose_throwStart)
 
 
     print "============ Throw Glider"
-    raw_input('Throw Glider <enter>')
-    robot.set_accel(0.95)
-    robot.set_vel(0.95)
+    #raw_input('Throw Glider <enter>')
+    robot.set_accel(0.99)
+    robot.set_vel(0.99)
     #throwPlan, throwFraction = robot.plan_cartesian_throw_path()
     #robot.execute_plan(throwPlan)
-    pose_throwEnd = [0,0.33,1.70,0,0.5,radians(90)]
+    pose_throwEnd = [0,0.33,1.4,0.1,0.1,radians(90)]
     robot.goto_joint_posn(pose_throwEnd)
 
     #raw_input('Release Glider <enter>')
@@ -436,10 +414,8 @@ def main():
     robot.detach_glider()
     robot.remove_glider()
 
-    #print "============ Per Best Practices, return to All-Zeros Joint Position [0,0,0,0,0,0]"
-    #print "============ Press `Enter` to execute a movement using a 'joint state goal' ..."
-    #raw_input()
-    #robot.goto_all_zeros()
+    raw_input('Per Best Practices, return to All-Zeros Joint Position <enter>')
+    robot.goto_all_zeros()
 
     print "============ Demo complete!"
   except rospy.ROSInterruptException:
