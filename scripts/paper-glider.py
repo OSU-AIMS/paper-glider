@@ -57,7 +57,6 @@ from moveit_commander.conversions import pose_to_list
 from motoman_msgs.srv import ReadSingleIO, WriteSingleIO
 
 # Quaternion Tools
-#from geometry_msgs.msg import Quaternion
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
 
@@ -112,7 +111,6 @@ class ThrowingArm(object):
     ## Wrapper for Moveit Commander's max_velocity
     ## Allowed range...   0.0 <= max_vel <= 1.0
     self.move_group.set_max_velocity_scaling_factor(max_vel)
-
   def set_accel(self,max_accel):
     ## Wrapper for Moveit Commander's max_acceleration
     ## Allowed range...   0.0 <= max_vel <= 1.0
@@ -192,7 +190,7 @@ class ThrowingArm(object):
     current_joints = self.move_group.get_current_joint_values()
     return all_close(joint_goal, current_joints, 0.01)
 
-  def goto_Quant_Orient(self):
+  def goto_Quant_Orient(self,pose):
 
     # Get Current Orientation in Quanternion Format
     # http://docs.ros.org/en/api/geometry_msgs/html/msg/Pose.html
@@ -201,17 +199,18 @@ class ThrowingArm(object):
 
     # Using Quaternion's for Angle
     # Conversion from Euler(rotx,roty,rotz) to Quaternion(x,y,z,w)
-    # Euler Units: Degrees
+    # Euler Units: RADIANS
     # http://docs.ros.org/en/melodic/api/tf/html/python/transformations.html
     # http://wiki.ros.org/tf2/Tutorials/Quaternions
     # http://docs.ros.org/en/api/geometry_msgs/html/msg/Quaternion.html
-    q_orientGoal = quaternion_from_euler(0,0,0,axes='sxyz')
+
+    q_orientGoal = quaternion_from_euler(pose[3],pose[4],pose[5],axes='sxyz')
     print(q_orientGoal)
 
     pose_goal = geometry_msgs.msg.Pose()
-    pose_goal.position.x = -0.5
-    pose_goal.position.y = 0
-    pose_goal.position.z = 1.0
+    pose_goal.position.x = pose[0]
+    pose_goal.position.y = pose[1]
+    pose_goal.position.z = pose[2]
     pose_goal.orientation.x = q_orientGoal[0]
     pose_goal.orientation.y = q_orientGoal[1]
     pose_goal.orientation.z = q_orientGoal[2]
@@ -436,7 +435,11 @@ def main():
 
     print "============ Pickup Airplane"
     raw_input('Move to PreDefined Airplane Pickup <enter>')
-    robot.goto_airplane_pickup()
+    #robot.goto_airplane_pickup()
+    pickup_pose = [0,-0.65,0.2,0,1.5707,0]
+    robot.goto_Quant_Orient(pickup_pose)
+
+    return
 
     raw_input('Actuate Gripper <enter>')
     robot.act_gripper(1)
