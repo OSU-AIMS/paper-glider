@@ -285,7 +285,7 @@ class ThrowingArm(object):
   def wait_for_state_update(self, glider_is_known=False, glider_is_attached=False, timeout=4):
     ## wait_for_scene_update
     ## Serves to ensure that the paper-airplane simulated object has been attached to simulated robot model
-    ## This helps with collision planning. Not as important for paper-glider project, but is best practice.
+    ## This helps with collision planning. Not as important for paper_glider project, but is best practice.
 
     start = rospy.get_time()
     seconds = rospy.get_time()
@@ -321,7 +321,7 @@ class ThrowingArm(object):
 
     # Add Glider to scene
     self.scene.add_box(self.glider_name, glider_pose, size=(0.05, 0.3, 0.1))
-    #self.scene.add_mesh(self.glider_name, glider_pose, filename="$(find paper-glider)/meshes/glider-model.stl", size=(1,1,1))
+    #self.scene.add_mesh(self.glider_name, glider_pose, filename="$(find paper_glider)/meshes/glider-model.stl", size=(1,1,1))
 
     return self.wait_for_state_update(glider_is_known=True, timeout=timeout)
   def attach_glider(self, timeout=4):

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!-- Tier1 Launch File: Run Package -->
+
+<launch>
+
+  <!-- TODO. Fix issues with launcher. Unknown cause. -->
+<!--   <node pkg="paper_glider" type="paper_glider.py" name="paper_glider" output="screen" />
+  <node pkg="paper_glider" type="visual_camera_positions.py" name="camera_pose_array" output="screen" />
+ -->
+</launch>

@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>paper-glider</name>
+  <name>paper_glider</name>
   <version>0.0.1</version>
   <description>
-    <p>PROJECT: "Paper-Glider" ROS Package</p>
+    <p>PROJECT: "paper_glider" ROS Package</p>
     <p>
       This package contains launch files and python script to execution the
       motion of throwing a paper airplane using the Motoman MH5 Robotic Arm.
@@ -12,7 +12,7 @@
       <b>Hardware Application</b>
     </p>
     <ul>
-      <li>Motoman MH5 - Default - ROS Industrial</li>
+      <li>Motoman MH5L - Default - ROS Industrial</li>
     </ul>
     <p>
       Before using any of the files included in this package, be sure to check
@@ -24,7 +24,7 @@
 
   <author>acbuynak</author>
   <maintainer email="buynak.9@buckeyemail.osu.edu">Adam Buynak (AIMS Lab @ The Ohio State University)</maintainer>
-  <license>BSD</license>
+  <license>Apache 2.0</license>
 
   <buildtool_depend>catkin</buildtool_depend>
 
@@ -36,7 +36,7 @@
   <build_depend>pcl_ros</build_depend>
   <build_depend>pcl_conversions</build_depend>
 
-  <exec_depend>motoman_mh5_moveit_config</exec_depend>
+  <exec_depend>motoman_mh5l_moveit_config</exec_depend>
   <exec_depend>moveit_core</exec_depend>
   <exec_depend>moveit_commander</exec_depend>
   <exec_depend>moveit_fake_controller_manager</exec_depend>

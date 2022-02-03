@@ -1,4 +1,4 @@
-# Paper-Glider :small_airplane:
+# paper_glider :small_airplane:
 Sample package for using a 6-axis robotic arm to launch a paper glider. Intended to support the development of robotic applications at the Artifically Intelligent Manufacturing Systems (AIMS) Lab at The Ohio State University.
 
 _Note: This repository was designed for ROS Melodic. It has not been tested on other distributions._
@@ -14,7 +14,7 @@ The following section explains how to setup the package to work.
 
 ### Required Repositories
   Clone the below repositories into your catkin-tools workspace:
-  - [paper-glider](https://github.com/osu-aims/paper-glider)
+  - [paper_glider](https://github.com/osu-aims/paper_glider)
   - [ros-industrial/Motoman](https://github.com/ros-industrial/motoman)
 
 
@@ -47,5 +47,5 @@ If a package is not found it is probably a third-party dependency, google the na
 
 ```
 roslaunch motoman_mh5_moveit_config demo.roslaunch
-rosrun paper-glider paper-glider.py
+rosrun paper_glider paper_glider.py
 ```
