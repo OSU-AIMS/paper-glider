@@ -75,18 +75,18 @@ def all_close(goal, actual, tolerance):
 
 class moveManipulator(object):
   """moveManipulator Class"""
-  def __init__(self):
+
+  def __init__(self, group_name):
     super(moveManipulator, self).__init__()
 
     ## First initialize `moveit_commander`_ and a `rospy`_ node:
     moveit_commander.roscpp_initialize(sys.argv)
-    rospy.init_node('node_moveManipulator', anonymous=True)
 
     # Setup Variables needed for Moveit_Commander
     self.object_name = ''
     self.robot = moveit_commander.RobotCommander()
     self.scene = moveit_commander.PlanningSceneInterface()
-    self.group_name = "manipulator"         # CHANGE THIS TO MATCH YOUR ROBOT'S MOVEIT CONFIG!
+    self.group_name = group_name         # CHANGE THIS TO MATCH YOUR ROBOT'S MOVEIT CONFIG!
     self.move_group = moveit_commander.MoveGroupCommander(self.group_name)
     self.display_trajectory_publisher = rospy.Publisher('/move_group/display_planned_path',
                                                    moveit_msgs.msg.DisplayTrajectory,
@@ -155,7 +155,7 @@ class moveManipulator(object):
     # Note: We are just planning, not asking move_group to actually move the robot yet:
     return plan, fraction
 
-  def goto_Quant_Orient(self,pose):
+  def goto_Euler_Orient(self,pose):
     ## GOTO Pose Using Cartesian + Quaternion Pose
 
     # Get Current Orientation in Quanternion Format
@@ -181,6 +181,34 @@ class moveManipulator(object):
     pose_goal.orientation.y = q_orientGoal[1]
     pose_goal.orientation.z = q_orientGoal[2]
     pose_goal.orientation.w = q_orientGoal[3]
+
+    self.move_group.set_pose_target(pose_goal)
+
+    ## Call the planner to compute the plan and execute it.
+    plan = self.move_group.go(wait=True)
+
+    # Calling `stop()` ensures that there is no residual movement
+    self.move_group.stop()
+
+    # It is always good to clear your targets after planning with poses.
+    # Note: there is no equivalent function for clear_joint_value_targets()
+    self.move_group.clear_pose_targets()
+
+    # For testing:
+    current_pose = self.move_group.get_current_pose().pose
+    return all_close(pose_goal, current_pose, 0.01)
+
+  def goto_Quant_Orient(self,pose):
+    ## GOTO Pose Using Cartesian + Quaternion Pose
+
+    pose_goal = geometry_msgs.msg.Pose()
+    pose_goal.position.x = pose[0]
+    pose_goal.position.y = pose[1]
+    pose_goal.position.z = pose[2]
+    pose_goal.orientation.x = pose[3]
+    pose_goal.orientation.y = pose[4]
+    pose_goal.orientation.z = pose[5]
+    pose_goal.orientation.w = pose[6]
 
     self.move_group.set_pose_target(pose_goal)
 
@@ -313,74 +341,3 @@ class moveManipulator(object):
     # If we exited the while loop without returning then we timed out
     return False
 
-
-
-
-def main():
-  try:
-    print ""
-    print "----------------------------------------------------------"
-    print "           MoveIt Control Toolkit Using Python            "
-    print "----------------------------------------------------------"
-    print "Example developed by ACBUYNAK. Spring 2021"
-    print "Note: You will be unable to interrup program if running\n from terminal. Alternatively use IDLE console."
-    print "Press Enter to advance script when prompted."
-    print ""
-
-
-    ## Initial Values & Controls
-    # ############################
-    robot = moveManipulator()
-    robot.set_accel(0.2)
-    robot.set_vel(0.2)
-
-
-    ## User Input
-    # ############################
-    raw_input('Use this to pause the python script before continuing. Press <enter> to continue')
-
-
-    ## Path Planning & Execution
-    # ############################
-
-    # Move to MFG Default Position: All-Zeros
-    raw_input('Go to All-Zeros Position <enter>')
-    robot.goto_all_zeros()
-
-    #  Cartesian Pose Instruction
-    raw_input('Go to Example Cart Pose <enter>')
-    pose_cart = [0.3,-0.4,0.8,0,radians(90),0]
-    robot.goto_Quant_Orient(pose_cart)
-
-    # Example Joint Pose Instruction
-    raw_input('Go to Example Joint Pose <enter>')
-    pose_joint = [0.2,0.2,0.2,0.2,0.2,0.2]
-    robot.goto_joint_posn(pose_joint)
-
-
-    ## IO Control
-    # ############################
-    robot.send_io(10011,1)     # Sending true to IO address 10011
-
-    
-    ## Pickup Objects + Collision Objects
-    # ############################
-    robot.add_object()
-    robot.attach_object()
-    robot.detach_object()
-    robot.remove_object()
-
-
-    ## Return to ALL-ZEROS for Best Practices
-    # ############################
-    raw_input('Per Best Practices, return to All-Zeros Joint Position <enter>')
-    robot.goto_all_zeros()
-
-    print "============ Complete!"
-  except rospy.ROSInterruptException:
-    return
-  except KeyboardInterrupt:
-    return
-
-if __name__ == '__main__':
-  main()
