@@ -36,6 +36,13 @@
   <build_depend>pcl_ros</build_depend>
   <build_depend>pcl_conversions</build_depend>
 
+  <build_depend>descartes_core</build_depend>
+  <build_depend>descartes_moveit</build_depend>
+  <build_depend>descartes_planner</build_depend>
+  <build_depend>descartes_trajectory</build_depend>
+  <build_depend>descartes_utilities</build_depend>
+  <build_depend>trajectory_msgs</build_depend>
+
   <exec_depend>motoman_mh5l_moveit_config</exec_depend>
   <exec_depend>moveit_core</exec_depend>
   <exec_depend>moveit_commander</exec_depend>
@@ -45,6 +52,13 @@
   <exec_depend>moveit_visual_tools</exec_depend>
   <exec_depend>pcl_ros</exec_depend>
   <exec_depend>pcl_conversions</exec_depend>
+  
+  <exec_depend>descartes_core</exec_depend>
+  <exec_depend>descartes_moveit</exec_depend>
+  <exec_depend>descartes_planner</exec_depend>
+  <exec_depend>descartes_trajectory</exec_depend>
+  <exec_depend>descartes_utilities</exec_depend>
+  <exec_depend>trajectory_msgs</exec_depend>
 
   <test_depend>moveit_resources</test_depend>
 
