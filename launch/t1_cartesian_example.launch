@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!-- Tier1 Launch File: Cartesian Demo -->
+
+<launch>
+
+  <node pkg="paper_glider" type="test_motion.py" name="paper_glider" output="screen" />
+
+</launch>
