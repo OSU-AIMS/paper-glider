@@ -21,7 +21,7 @@
 /**
  * Makes a dummy trajectory for the robot to follow.
  */
-std::vector<descartes_core::TrajectoryPtPtr> makePath();
+std::vector<descartes_core::TrajectoryPtPtr> makePath(descartes_core::RobotModelPtr model);
 
 /**
  * Sends a ROS trajectory to the robot controller
@@ -81,7 +81,7 @@ int main(int argc, char** argv)
   // come from CAD or from surfaces that were "scanned".
 
   // Make the path by calling a helper function. See makePath()'s definition for more discussion about paths.
-  std::vector<descartes_core::TrajectoryPtPtr> points = makePath();
+  std::vector<descartes_core::TrajectoryPtPtr> points = makePath(model);
 
   // 3. Now we create a planner that can fuse your kinematic world with the points you want to move the robot
   // along. There are a couple of planners now. DensePlanner is the naive, brute force approach to solving the
@@ -165,7 +165,7 @@ descartes_core::TrajectoryPtPtr makeTolerancedCartesianPoint(const Eigen::Isomet
   return TrajectoryPtPtr( new AxialSymmetricPt(pose, M_PI / 12.0, AxialSymmetricPt::Z_AXIS, TimingConstraint(dt)) );
 }
 
-std::vector<descartes_core::TrajectoryPtPtr> makePath()
+std::vector<descartes_core::TrajectoryPtPtr> makePath(descartes_core::RobotModelPtr model)
 {
   // In Descartes, trajectories are composed of "points". Each point describes what joint positions of the robot can
   // satisfy it. You can have a "joint point" for which only a single solution is acceptable. You might have a
@@ -179,27 +179,32 @@ std::vector<descartes_core::TrajectoryPtPtr> makePath()
 
   // First thing, let's generate a pattern with its origin at zero. We'll define another transform later that
   // can move it to somewere more convenient.
-  const static double step_size = 0.01;
-  const static int num_steps = 20;
-  const static double time_between_points = 0.5;
+  const static double step_size = 0.100;
+  const static int num_steps = 10;
+  const static double time_between_points = 2.5;
 
   EigenSTL::vector_Isometry3d pattern_poses;
-  for (int i = -num_steps / 2; i < num_steps / 2; ++i)
+  for (int i = 0; i < num_steps / 2; ++i)
   {
-    // Create a pose and initialize it to identity
+    // create a pose and initialize it to identity
     Eigen::Isometry3d pose = Eigen::Isometry3d::Identity();
-    // set the translation (we're moving along a line in Y)
-    pose.translation() = Eigen::Vector3d(0, i * step_size, 0);
-    // set the orientation. By default, the tool will be pointing up into the air when we usually want it to
-    // be pointing down into the ground.
-    pose *= Eigen::AngleAxisd(M_PI, Eigen::Vector3d::UnitX()); // this flips the tool around so that Z is down
+    
+    // set tool position (move along a line in '-Y' direction)(relative to pattern_origin)
+    pose.translation() = Eigen::Vector3d(0, -i * step_size, 0);
+    
+    // set tool orientation
+    // pose *= Eigen::AngleAxisd(M_PI/2, Eigen::Vector3d::UnitY()); // this flips the tool around so that Z points forward
     pattern_poses.push_back(pose);
   }
 
-  // Now lets translate these points to Descartes trajectory points
-  // The ABB2400 is pretty big, so let's move the path forward and up.
+  // Set motion pattern origin using joint state
   Eigen::Isometry3d pattern_origin = Eigen::Isometry3d::Identity();
-  pattern_origin.translation() = Eigen::Vector3d(0.2, 0, 0.2);
+
+  std::vector<double> joint_all_zeros(6, 0.0); // all-zeros joint position
+  model->getFK(joint_all_zeros, pattern_origin);
+
+  ROS_INFO("Found FK");
+
 
   std::vector<descartes_core::TrajectoryPtPtr> result;
   for (const auto& pose : pattern_poses)
@@ -221,15 +226,17 @@ bool executeTrajectory(const trajectory_msgs::JointTrajectory& trajectory)
 {
   // Create a Follow Joint Trajectory Action Client
   actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction> ac ("joint_trajectory_action", true);
-  if (!ac.waitForServer(ros::Duration(2.0)))
+  if (!ac.waitForServer(ros::Duration(5.0)))
   {
     ROS_ERROR("Could not connect to action server");
     return false;
   }
 
+  ROS_INFO("Connected to action server!");
+
   control_msgs::FollowJointTrajectoryGoal goal;
   goal.trajectory = trajectory;
-  goal.goal_time_tolerance = ros::Duration(1.0);
+  goal.goal_time_tolerance = ros::Duration(2.0);
   
   return ac.sendGoalAndWait(goal) == actionlib::SimpleClientGoalState::SUCCEEDED;
 }
