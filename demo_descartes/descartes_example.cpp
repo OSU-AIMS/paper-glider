@@ -21,15 +21,21 @@
 // ROS Messages
 #include <sensor_msgs/JointState.h>
 
-/**
- * Makes a dummy trajectory for the robot to follow.
- */
+
+// ----------------------
+// Function Declarations
+// ----------------------
+
+// Example path trajectory
 std::vector<descartes_core::TrajectoryPtPtr> makePath(Eigen::Isometry3d pattern_origin = Eigen::Isometry3d::Identity());
 
-/**
- * Sends a ROS trajectory to the robot controller
- */
+// Send ROS formatted trajectory to the robot controller
 bool executeTrajectory(const trajectory_msgs::JointTrajectory& trajectory);
+
+
+// ----------------------
+// Main
+// ----------------------
 
 int main(int argc, char** argv)
 {
@@ -41,36 +47,22 @@ int main(int argc, char** argv)
   ros::AsyncSpinner spinner (1);
   spinner.start();
 
-  // 1. First thing first, let's create a kinematic model of the robot. In Descartes, this is used to do things
-  // like forward kinematics (joints -> pose), inverse kinematics (pose -> many joints), and collision checking.
 
-  // All of the existing planners (as of Nov 2017) have been designed with the idea that you have "closed form"
-  // kinematics. This means that the default solvers in MoveIt (KDL) will NOT WORK WELL. I encourage you to produce
-  // an ikfast model for your robot (see MoveIt tutorial) or use the OPW kinematics package if you have a spherical
-  // wrist industrial robot. See http://docs.ros.org/kinetic/api/moveit_tutorials/html/doc/ikfast/ikfast_tutorial.html 
-
-  // This package assumes that the move group you are using is pointing to an IKFast kinematics plugin in its
-  // kinematics.yaml file. By default, it assumes that the underlying kinematics are from 'base_link' to 'tool0'.
-  // If you have renamed these, please set the 'ikfast_base_frame' and 'ikfast_tool_frame' parameter (not in the
-  // private namespace) to the base and tool frame used to generate the IKFast model.
+  // 1. Load kinematic model of robot using a moveit configuration.
+  //    Supported IK solvers: ikfast, trac-ik
   descartes_core::RobotModelPtr model (new descartes_moveit::IkFastMoveitStateAdapter());
 
-  // Name of description on parameter server. Typically just "robot_description". Used to initialize
-  // moveit model.
+  // Robot Model Description, ROS Parameter name
   const std::string robot_description = "robot_description";
 
-  // name of the kinematic group you defined when running MoveitSetupAssistant. For many industrial robots this will be
-  // "manipulator"
+  // Kinematic group in robot's moveit_config
   const std::string group_name = "gp7";
 
-  // Name of frame in which you are expressing poses. Typically "world_frame" or "base_link".
+  // Define reference frames
   const std::string world_frame = "base_link";
-
-  // tool center point frame (name of link associated with tool). The robot's flange is typically "tool0" but yours
-  // could be anything. We typically have our tool's positive Z-axis point outward from the grinder, welder, etc.
   const std::string tcp_frame = "tool0";
 
-  // Before you can use a model, you must call initialize. This will load robot models and sanity check the model.
+  // Initialize model. This will load robot models and sanity check the model.
   if (!model->initialize(robot_description, group_name, world_frame, tcp_frame))
   {
     ROS_INFO("Could not initialize robot model");
@@ -79,12 +71,8 @@ int main(int argc, char** argv)
 
   model->setCheckCollisions(true); // Let's turn on collision checking.
 
-  // 2. The next thing to do is to generate a path for the robot to follow. The description of this path is one of the
-  // cool things about Descartes. The source of this path is where this library ties into your application: it could
-  // come from CAD or from surfaces that were "scanned".
 
-  // Make the path by calling a helper function. See makePath()'s definition for more discussion about paths.
-
+  // 2. Assemble an path plan (using an simple example via makePath() function)
 
   // define path origin as current robot flange-TCP position
   const std::string jointTopic = "/joint_states";
@@ -96,10 +84,9 @@ int main(int argc, char** argv)
   // assemble path about path origin
   std::vector<descartes_core::TrajectoryPtPtr> points = makePath(pattern_origin);
 
-  // 3. Now we create a planner that can fuse your kinematic world with the points you want to move the robot
-  // along. There are a couple of planners now. DensePlanner is the naive, brute force approach to solving the
-  // trajectory. SparsePlanner may be faster for some problems (especially very dense ones), but has recieved
-  // less overall testing and evaluation.
+  // 3. Initialize one of Descarte's planners to build a trajectory from your path plan.
+  // Planners:  DensePlanner. Naive, brute force method
+  //            SparsePlanner. Faster for some problems (especially very dense ones), but less robust.
   descartes_planner::DensePlanner planner;
 
   // Like the model, you also need to call initialize on the planner
@@ -109,20 +96,22 @@ int main(int argc, char** argv)
     return -2;
   }
 
-  // 4. Now, for the planning itself. This typically happens in two steps. First, call planPath(). This function takes
-  // your input trajectory and expands it into a large kinematic "graph". Failures at this point indicate that the
-  // input path may not have solutions at a given point (because of reach/collision) or has two points with no way
-  // to connect them.
+
+  // 4. Use Descarte's planner to build a trajectory. Two step process.
+
+  //    First, call planPath() to convert input trajectory into a large kinematic "graph".
+  //           Failures at this point indicate that the input path may not have solutions at a given point
+  //           (because of reach/collision) or has two points with no way to connect them.
   if (!planner.planPath(points))
   {
     ROS_ERROR("Could not solve for a valid path");
     return -3;
   }
 
-  // After expanding the graph, we now call 'getPath()' which searches the graph for a minimum cost path and returns
-  // the result. Failures here (assuming planPath was good) indicate that your path has solutions at every waypoint
-  // but constraints prevent a solution through the whole path. Usually this means a singularity is hanging out in the
-  // middle of your path: the robot can solve all the points but not in the same arm configuration.
+  // Second, call 'getPath()' to searches the graph for a minimum cost path and return result.
+  //        Failures here (assuming planPath was good) indicate that your path has solutions at every waypoint
+  //        but constraints prevent a solution through the whole path. Usually this means a singularity is hanging out in the
+  //        middle of your path: the robot can solve all the points but not in the same arm configuration.
   std::vector<descartes_core::TrajectoryPtPtr> result;
   if (!planner.getPath(result))
   {
@@ -131,14 +120,13 @@ int main(int argc, char** argv)
   }
 
   // 5. Translate the result into something that you can execute. In ROS land, this means that we turn the result into
-  // a trajectory_msgs::JointTrajectory that's executed through a control_msgs::FollowJointTrajectoryAction. If you
-  // have your own execution interface, you can get joint values out of the results in the same way.
+  // a trajectory_msgs::JointTrajectory that's executed through a control_msgs::FollowJointTrajectoryAction.
 
   // get joint names - this could be from the robot model, or from the parameter server.
   std::vector<std::string> names;
   nh.getParam("controller_joint_names", names);
 
-  // Create a JointTrajectory
+  // create a JointTrajectory
   trajectory_msgs::JointTrajectory joint_solution;
   joint_solution.joint_names = names;
 
@@ -163,6 +151,12 @@ int main(int argc, char** argv)
   return 0;
 }
 
+
+
+// ----------------------
+// Support Functions
+// ----------------------
+
 descartes_core::TrajectoryPtPtr makeCartesianPoint(const Eigen::Isometry3d& pose, double dt)
 {
   using namespace descartes_core;
@@ -177,6 +171,12 @@ descartes_core::TrajectoryPtPtr makeTolerancedCartesianPoint(const Eigen::Isomet
   using namespace descartes_trajectory;
   return TrajectoryPtPtr( new AxialSymmetricPt(pose, M_PI / 12.0, AxialSymmetricPt::Z_AXIS, TimingConstraint(dt)) );
 }
+
+
+
+// ----------------------
+// Example Path Creation
+// ----------------------
 
 std::vector<descartes_core::TrajectoryPtPtr> makePath(Eigen::Isometry3d pattern_origin)
 {
@@ -225,6 +225,12 @@ std::vector<descartes_core::TrajectoryPtPtr> makePath(Eigen::Isometry3d pattern_
 
   return result;
 }
+
+
+
+// ----------------------
+// Function Definitions
+// ----------------------
 
 bool executeTrajectory(const trajectory_msgs::JointTrajectory& trajectory)
 {
