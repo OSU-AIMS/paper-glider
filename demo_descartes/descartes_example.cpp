@@ -18,10 +18,13 @@
 // Includes the utility function for converting to trajectory_msgs::JointTrajectory's
 #include <descartes_utilities/ros_conversions.h>
 
+// ROS Messages
+#include <sensor_msgs/JointState.h>
+
 /**
  * Makes a dummy trajectory for the robot to follow.
  */
-std::vector<descartes_core::TrajectoryPtPtr> makePath(descartes_core::RobotModelPtr model);
+std::vector<descartes_core::TrajectoryPtPtr> makePath(Eigen::Isometry3d pattern_origin = Eigen::Isometry3d::Identity());
 
 /**
  * Sends a ROS trajectory to the robot controller
@@ -81,7 +84,17 @@ int main(int argc, char** argv)
   // come from CAD or from surfaces that were "scanned".
 
   // Make the path by calling a helper function. See makePath()'s definition for more discussion about paths.
-  std::vector<descartes_core::TrajectoryPtPtr> points = makePath(model);
+
+
+  // define path origin as current robot flange-TCP position
+  const std::string jointTopic = "/joint_states";
+  sensor_msgs::JointStateConstPtr current_state_ptr = ros::topic::waitForMessage<sensor_msgs::JointState>(jointTopic, ros::Duration(5));
+
+  Eigen::Isometry3d pattern_origin = Eigen::Isometry3d::Identity();
+  model->getFK(current_state_ptr->position, pattern_origin);
+
+  // assemble path about path origin
+  std::vector<descartes_core::TrajectoryPtPtr> points = makePath(pattern_origin);
 
   // 3. Now we create a planner that can fuse your kinematic world with the points you want to move the robot
   // along. There are a couple of planners now. DensePlanner is the naive, brute force approach to solving the
@@ -165,7 +178,7 @@ descartes_core::TrajectoryPtPtr makeTolerancedCartesianPoint(const Eigen::Isomet
   return TrajectoryPtPtr( new AxialSymmetricPt(pose, M_PI / 12.0, AxialSymmetricPt::Z_AXIS, TimingConstraint(dt)) );
 }
 
-std::vector<descartes_core::TrajectoryPtPtr> makePath(descartes_core::RobotModelPtr model)
+std::vector<descartes_core::TrajectoryPtPtr> makePath(Eigen::Isometry3d pattern_origin)
 {
   // In Descartes, trajectories are composed of "points". Each point describes what joint positions of the robot can
   // satisfy it. You can have a "joint point" for which only a single solution is acceptable. You might have a
@@ -179,9 +192,9 @@ std::vector<descartes_core::TrajectoryPtPtr> makePath(descartes_core::RobotModel
 
   // First thing, let's generate a pattern with its origin at zero. We'll define another transform later that
   // can move it to somewere more convenient.
-  const static double step_size = 0.100;
-  const static int num_steps = 10;
-  const static double time_between_points = 2.5;
+  const static double step_size = 0.010;
+  const static int num_steps = 100;
+  const static double time_between_points = 0.01;
 
   EigenSTL::vector_Isometry3d pattern_poses;
   for (int i = 0; i < num_steps / 2; ++i)
@@ -190,29 +203,20 @@ std::vector<descartes_core::TrajectoryPtPtr> makePath(descartes_core::RobotModel
     Eigen::Isometry3d pose = Eigen::Isometry3d::Identity();
     
     // set tool position (move along a line in '-Y' direction)(relative to pattern_origin)
-    pose.translation() = Eigen::Vector3d(0, -i * step_size, 0);
+    pose.translation() = Eigen::Vector3d(-i * step_size, 0, 0);
     
     // set tool orientation
     // pose *= Eigen::AngleAxisd(M_PI/2, Eigen::Vector3d::UnitY()); // this flips the tool around so that Z points forward
     pattern_poses.push_back(pose);
   }
 
-  // Set motion pattern origin using joint state
-  Eigen::Isometry3d pattern_origin = Eigen::Isometry3d::Identity();
-
-  std::vector<double> joint_all_zeros(6, 0.0); // all-zeros joint position
-  model->getFK(joint_all_zeros, pattern_origin);
-
-  ROS_INFO("Found FK");
-
-
   std::vector<descartes_core::TrajectoryPtPtr> result;
   for (const auto& pose : pattern_poses)
   {
     // This creates a trajectory that searches around the tool Z and let's the robot move in that null space
-    descartes_core::TrajectoryPtPtr pt = makeTolerancedCartesianPoint(pattern_origin * pose, time_between_points);
+    // descartes_core::TrajectoryPtPtr pt = makeTolerancedCartesianPoint(pattern_origin * pose, time_between_points);
     // This creates a trajectory that is rigid. The tool cannot float and must be at exactly this point.
-    //  descartes_core::TrajectoryPtPtr pt = makeCartesianPoint(pattern_origin * pose, time_between_points);
+    descartes_core::TrajectoryPtPtr pt = makeCartesianPoint(pattern_origin * pose, time_between_points);
     result.push_back(pt);
   }
 
